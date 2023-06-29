@@ -24,4 +24,4 @@ def multiple_plots(file_path):
 	plt.show()
 	
 
-multiple_plots("/home/user/sat/models/output_test.txt")
+multiple_plots("/home/user/sat/models_arch/output_test.txt")

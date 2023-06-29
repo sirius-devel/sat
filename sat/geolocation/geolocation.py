@@ -164,22 +164,24 @@ def calc_corner_loss(p, p_gt):
 	loss = ((corners_w_p - corners_w_gt) ** 2).sum()
 	return loss
 
-def test_optflow_model(DATASET_PATH, MODEL_PATH, TEST_DATA_SAVE_PATH):
+def test_optflow_model(DATASET_PATH, MODEL1_PATH, MODEL2_PATH, TEST_DATA_SAVE_PATH):
 	if USE_CUDA:
 		optf_vgg16 = optf.OptFlow(optf.Vgg16("")).cuda()
-		optf_trained = optf.OptFlow(optf.PretrainedNet(MODEL_PATH)).cuda()
+		optf_resnet50 = optf.OptFlow(optf.PretrainedNet(MODEL2_PATH)).cuda()
+		optf_trained = optf.OptFlow(optf.PretrainedNet(MODEL1_PATH)).cuda()
 	else:
 		optf_vgg16 = optf.OptFlow(optf.Vgg16(""))
-		optf_trained = optf.OptFlow(optf.PretrainedNet(MODEL_PATH))
+		optf_resnet50 = optf.OptFlow(optf.PretrainedNet(MODEL2_PATH))
+		optf_trained = optf.OptFlow(optf.PretrainedNet(MODEL1_PATH))
 
 	testbatch_sz = 1 # keep as 1 in order to compute corner error accurately
-	test_num = 50
+	test_num = 500
 	test_dataset = SatImageDataset(DATASET_PATH + "/test", test_num)
 	test_loader = DataLoader(test_dataset, batch_size = testbatch_sz, shuffle = True, pin_memory=True)
-	test_results = np.zeros((test_num, 2), dtype=float)
 	print('Testing...')
 	print('TEST DATA SAVE PATH: ', TEST_DATA_SAVE_PATH)
-	print('MODEL PATH: ', MODEL_PATH)
+	print('MODEL1 PATH: ', MODEL1_PATH)
+	print('MODEL2_PATH', MODEL2_PATH)
 	print('USE CUDA: ', USE_CUDA)
 	print('min_scale: ',  min_scale)
 	print('max_scale: ', max_scale)
@@ -190,7 +192,7 @@ def test_optflow_model(DATASET_PATH, MODEL_PATH, TEST_DATA_SAVE_PATH):
 	print('upper_sz: ', upper_sz)
 	print('warp_pad: ', warp_pad)
 	print('test batch size: ', testbatch_sz, ' number of test images: ', test_num)
-	test_results = np.zeros((test_num, 3), dtype=float)
+	test_results = np.zeros((test_num, 4), dtype=float)
 		
 	if USE_CUDA:
 		test_img_batch = torch.zeros(testbatch_sz, 3, training_sz, training_sz).cuda()
@@ -201,10 +203,12 @@ def test_optflow_model(DATASET_PATH, MODEL_PATH, TEST_DATA_SAVE_PATH):
 		test_template_batch = torch.zeros(testbatch_sz, 3, training_sz, training_sz)
 		test_param_batch = torch.zeros(testbatch_sz, 8, 1)
 	test_train_loss = 0
+	test_resnet_loss = 0
 	test_vgg_loss = 0
 	test_ralg_loss = 0
 	test_batches = 0
 	optf_vgg16.eval()
+	optf_resnet50.eval()
 	optf_trained.eval()
 	i = 0
 	for img_test_data, template_test_data, param_test_data in test_loader:
@@ -219,6 +223,8 @@ def test_optflow_model(DATASET_PATH, MODEL_PATH, TEST_DATA_SAVE_PATH):
 		#forward pass
 		trained_param, _ = optf_trained(test_img_batch, test_template_batch, tol = 1e-3, max_itr = 1, conv_flag = 1)
 		trained_loss = calc_corner_loss(trained_param, param_test_data)
+		resnet50_param, _ = optf_resnet50(test_img_batch, test_template_batch, tol = 1e-3, max_itr = 1, conv_flag = 1)
+		resnet50_loss = calc_corner_loss(resnet50_param, param_test_data)
 		
 		vgg_param, _ = optf_vgg16(test_img_batch, test_template_batch, tol=1e-3, max_itr=1, conv_flag=1)
 		vgg_loss = calc_corner_loss(vgg_param, param_test_data)
@@ -229,19 +235,24 @@ def test_optflow_model(DATASET_PATH, MODEL_PATH, TEST_DATA_SAVE_PATH):
 		test_results[i, 0] = trained_loss
 		test_results[i, 1] = vgg_loss
 		test_results[i, 2] = ralg_loss
+		test_results[i, 3] = resnet50_loss
 		print('test: ', i, 
 			' trained loss: ', round(float(trained_loss), 2),
-			' vgg16 loss: ', round(float(vgg_loss), 2), 
-			' ralg loss: ', round(float(ralg_loss), 2))
+			' vgg16 loss: ', round(float(vgg_loss), 2),
+			' ralg loss: ', round(float(ralg_loss), 2),
+			' resnet50 loss', round(float(resnet50_loss), 2))
 		sys.stdout.flush()		
 		test_train_loss += float(trained_loss)
 		test_vgg_loss += float(vgg_loss)
 		test_ralg_loss += float(ralg_loss)
+		test_resnet_loss += float(resnet50_loss)
 		i = i + 1
 	test_train_loss = float(test_train_loss/len(test_loader))
 	test_vgg_loss = float(test_vgg_loss/len(test_loader))
 	test_ralg_loss = float(test_vgg_loss/len(test_loader))
-	print('Average test train loss: ', float(test_train_loss), " average vgg loss: ", float(test_vgg_loss), " average ralg loss: ", float(test_ralg_loss))
+	test_resnet_loss = float(test_resnet_loss/len(test_loader))
+	print('Average test train loss: ', float(test_train_loss), " average vgg loss: ", float(test_vgg_loss), 
+		" average ralg loss: ", float(test_ralg_loss), " average resnet loss: ", float(test_resnet_loss))
 	np.savetxt(TEST_DATA_SAVE_PATH, test_results, delimiter=',')
 
 class SatImageDataset(Dataset):
@@ -268,6 +279,38 @@ class SatImageDataset(Dataset):
 		params_tensor = params_tensor.reshape(8, 1)
 		return transform_img_tensor, template_img_tensor, params_tensor
 
+
+def validate(optf_net, valid_loader, validbatch_sz):
+	val_loss = 0
+	valid_batches = 0
+	if USE_CUDA:
+		valid_img_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz).cuda()
+		valid_template_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz).cuda()
+		param_valid_data = torch.zeros(validbatch_sz, 8, 1).cuda()
+	else:
+		valid_img_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz)
+		valid_template_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz)
+		param_valid_data = torch.zeros(validbatch_sz, 8, 1)
+		
+	for img_valid_data, template_valid_data, param_valid_data in valid_loader:
+		valid_batches = valid_batches + 1
+		if USE_CUDA:
+			valid_img_batch = optf.normalize_batch(img_valid_data).cuda()
+			valid_template_batch = optf.normalize_batch(template_valid_data).cuda()
+			param_valid_data = param_valid_data.cuda()
+		else:
+			valid_img_batch = optf.normalize_batch(img_valid_data)
+			valid_template_batch = optf.normalize_batch(template_valid_data)
+		#forward pass of training minibatch through 
+		optf_valid_param_batch, _ = optf_net(valid_img_batch, valid_template_batch, tol = 1e-3, max_itr = 1, conv_flag = 1)
+		valid_loss = calc_corner_loss(optf_valid_param_batch, param_valid_data)
+		v_loss = valid_loss.item()
+		#print('batch validation loss: ', v_loss)
+		val_loss += v_loss
+	val_loss = float(val_loss/len(valid_loader))
+	print('Average validation loss on batch: ', float(val_loss))
+	
+	
 def train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH):
 
 	minibatch_sz = 20
@@ -275,13 +318,15 @@ def train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH):
 	train_dataset = SatImageDataset(DATASET_PATH + "/train", 25000)
 	train_loader = DataLoader(train_dataset, batch_size = minibatch_sz, shuffle = True, pin_memory=True)
 	valid_dataset = SatImageDataset(DATASET_PATH + "/valid", 5000)
-	valid_loader = DataLoader(train_dataset, batch_size = validbatch_sz, shuffle = True, pin_memory=True)
+	valid_loader = DataLoader(valid_dataset, batch_size = validbatch_sz, shuffle = True, pin_memory=True)
 
 	if USE_CUDA:
-		optf_net = optf.OptFlow(optf.Vgg16("")).cuda()
+		optf_net = optf.OptFlow(optf.Resnet50("")).cuda()
+		#optf_net = optf.OptFlow(optf.Vgg16("")).cuda()
 		#optf_net = optf.OptFlow(optf.PretrainedNet("/home/user/sat/models/trained_model_output.pth")).cuda()
 	else:
-		optf_net = optf.OptFlow(optf.Vgg16(""))
+		#optf_net = optf.OptFlow(optf.Vgg16(""))
+		optf_net = optf.OptFlow(optf.Resnet50(""))
 	optimizer = optim.Adam(filter(lambda p: p.requires_grad, optf_net.conv_func.parameters()), lr=0.001)
 	
 	print('Training...')
@@ -307,15 +352,6 @@ def train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH):
 		img_train_data = torch.zeros(minibatch_sz, 3, training_sz, training_sz)
 		template_train_data = torch.zeros(minibatch_sz, 3, training_sz, training_sz)
 		param_train_data = torch.zeros(minibatch_sz, 8, 1)
-		
-	if USE_CUDA:
-		valid_img_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz).cuda()
-		valid_template_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz).cuda()
-		valid_param_batch = torch.zeros(validbatch_sz, 8, 1).cuda()
-	else:
-		valid_img_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz)
-		valid_template_batch = torch.zeros(validbatch_sz, 3, training_sz, training_sz)
-		valid_param_batch = torch.zeros(validbatch_sz, 8, 1)
 	
 	print_every = 100
 	for epoch in range(50):
@@ -353,26 +389,8 @@ def train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH):
 		gc.collect()
 		sys.stdout.flush()
 		end = time.time()
-	val_loss = 0
-	valid_batches = 0
 	optf_net.eval()
-	for img_valid_data, template_valid_data, param_valid_data in valid_loader:
-		valid_batches = valid_batches + 1
-		if USE_CUDA:
-			valid_img_batch = optf.normalize_batch(img_valid_data).cuda()
-			valid_template_batch = optf.normalize_batch(template_valid_data).cuda()
-			param_valid_data = param_valid_data.cuda()
-		else:
-			valid_img_batch = optf.normalize_batch(img_valid_data)
-			valid_template_batch = optf.normalize_batch(template_valid_data)
-		#forward pass of training minibatch through 
-		optf_valid_param_batch, _ = optf_net(valid_img_batch, valid_template_batch, tol = 1e-3, max_itr = 1, conv_flag = 1)
-		valid_loss = calc_corner_loss(optf_valid_param_batch, param_valid_data)
-		v_loss = valid_loss.item()
-		print('batch validation loss: ', v_loss)
-		val_loss += v_loss
-	val_loss = float(val_loss/len(valid_loader))
-	print('Average validation loss on batch: ', float(val_loss))
+	validate(optf_net, valid_loader, validbatch_sz)
 		
 
 

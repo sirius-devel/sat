@@ -23,7 +23,7 @@ import geolocation as geo
 
 
 # USAGE:
-# python3 test.py DATASET_PATH MODEL_PATH --TEST_DATA_SAVE_PATH
+# python3 test.py DATASET_PATH MODEL1_PATH MODEL2_PATH --TEST_DATA_SAVE_PATH
 
 # TEST:
 # python3 test.py /home/user/sat/ /home/user/sat/models/epoch38_model.pth -t /home/user/sat/models/output1.txt
@@ -33,18 +33,19 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("DATASET_PATH")
-	parser.add_argument("MODEL_PATH")
+	parser.add_argument("MODEL1_PATH")
+	parser.add_argument("MODEL2_PATH")
 	parser.add_argument("-t", "--TEST_DATA_SAVE_PATH")
 
 	args = parser.parse_args()
 
 	DATASET_PATH = args.DATASET_PATH
-	MODEL_PATH = args.MODEL_PATH
-
+	MODEL1_PATH = args.MODEL1_PATH
+	MODEL2_PATH = args.MODEL2_PATH
 	if args.TEST_DATA_SAVE_PATH == None:
 		exit('Must supply TEST_DATA_SAVE_PATH argument')
 	else:
 		TEST_DATA_SAVE_PATH = args.TEST_DATA_SAVE_PATH
 			
-	geo.test_optflow_model(DATASET_PATH, MODEL_PATH, TEST_DATA_SAVE_PATH)
+	geo.test_optflow_model(DATASET_PATH, MODEL1_PATH, MODEL2_PATH, TEST_DATA_SAVE_PATH)
 

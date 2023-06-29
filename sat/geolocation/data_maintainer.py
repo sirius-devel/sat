@@ -24,7 +24,7 @@ def write_dataset(dataset_path, data_path, generated_img_count, start_index):
 			np.savetxt(f, ar, delimiter=',', fmt='%f')
 
 def create_dataset(dataset_path, data_path):
-	img_count=500
+	img_count = 500
 	start_index = 0
 	for i in range(50):
 		start_index = i*img_count

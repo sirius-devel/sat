@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision
 from torchvision import models, transforms
-from torchvision.models import VGG16_Weights
+from torchvision.models import VGG16_Weights, ResNet50_Weights
 import io
 import requests
 from PIL import Image
@@ -204,9 +204,9 @@ class Vgg16(nn.Module):
 		)
 
 		# freeze conv1, conv2
-		for p in self.parameters():
-			if p.size()[0] < 256:
-				p.requires_grad=False
+		#for p in self.parameters():
+		#	if p.size()[0] < 256:
+		#		p.requires_grad=False
 
 		'''
 	    (0): Conv2d (3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
@@ -248,6 +248,78 @@ class Vgg16(nn.Module):
 		# print('done')
 		return x
     
+def flatten_model(modules):
+    def flatten_list(_2d_list):
+        flat_list = []
+        # Iterate through the outer list
+        for element in _2d_list:
+            if type(element) is list:
+                # If the element is of type list, iterate through the sublist
+                for item in element:
+                    flat_list.append(item)
+            else:
+                flat_list.append(element)
+        return flat_list
+
+    ret = []
+    try:
+        for _, n in modules:
+            ret.append(loopthrough(n))
+    except:
+        try:
+            if str(modules._modules.items()) == "odict_items([])":
+                ret.append(modules)
+            else:
+                for _, n in modules._modules.items():
+                    ret.append(loopthrough(n))
+        except:
+            ret.append(modules)
+    return flatten_list(ret)
+       
+class Resnet50(nn.Module):
+	def __init__(self, model_path):
+		super(Resnet50, self).__init__()
+
+		print('Loading pretrained network...',end='')
+		if model_path == "":
+			resnet50 = torchvision.models.resnet50(ResNet50_Weights.IMAGENET1K_V2)#weights=None
+			
+		else:
+			resnet50 = torch.load(model_path)
+			
+		print('done')
+
+		self.features = nn.Sequential(
+			*(list(resnet50.children())[:-2]),
+		)
+
+		target_layers =[]
+		module_list = [module for module in self.modules()] # this is needed
+		flatted_list= flatten_model(module_list)
+		conv_count = 0
+		for count, value in enumerate(flatted_list): 
+			if isinstance(value, (nn.Conv2d,nn.AvgPool2d,nn.BatchNorm2d)):
+		#		for p in value.parameters():
+		#			p.requires_grad = True
+				if isinstance(value, (nn.Conv2d)):
+					conv_count = conv_count + 1
+			if (conv_count >= 45):
+				for p in value.parameters():
+					p.requires_grad = True
+			#else:
+			#	for p in value.parameters():
+			#		p.requires_grad = False
+		#	print(count, conv_count, value)
+			target_layers.append(value)
+		#print(target_layers)
+
+	def forward(self, x):
+		# print('CNN stage...',end='')
+		x = self.features(x)
+		# print('done')
+		return x
+		
+		
 class PretrainedNet(nn.Module):
 	def __init__(self, model_path):
 		super(PretrainedNet, self).__init__()
