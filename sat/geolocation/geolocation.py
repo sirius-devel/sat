@@ -311,7 +311,7 @@ def validate(optf_net, valid_loader, validbatch_sz):
 	print('Average validation loss on batch: ', float(val_loss))
 	
 	
-def train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH):
+def train_optflow_model(MODEL_PATH, DATASET_PATH, RESNET):
 
 	minibatch_sz = 20
 	validbatch_sz = 1
@@ -321,17 +321,19 @@ def train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH):
 	valid_loader = DataLoader(valid_dataset, batch_size = validbatch_sz, shuffle = True, pin_memory=True)
 
 	if USE_CUDA:
-		optf_net = optf.OptFlow(optf.Resnet50("")).cuda()
-		#optf_net = optf.OptFlow(optf.Vgg16("")).cuda()
+		if (RESNET):
+			optf_net = optf.OptFlow(optf.Resnet50("")).cuda()
+		else:
+			optf_net = optf.OptFlow(optf.Vgg16("")).cuda()
 		#optf_net = optf.OptFlow(optf.PretrainedNet("/home/user/sat/models/trained_model_output.pth")).cuda()
 	else:
-		#optf_net = optf.OptFlow(optf.Vgg16(""))
-		optf_net = optf.OptFlow(optf.Resnet50(""))
+		if (RESNET):
+			optf_net = optf.OptFlow(optf.Resnet50(""))
+		else:
+			optf_net = optf.OptFlow(optf.Vgg(""))
 	optimizer = optim.Adam(filter(lambda p: p.requires_grad, optf_net.conv_func.parameters()), lr=0.001)
 	
 	print('Training...')
-	print('DATAPATH: ',DATAPATH)
-	print('FOLDER: ', FOLDER)
 	print('MODEL_PATH: ', MODEL_PATH)
 	print('USE CUDA: ', USE_CUDA)
 	print('min_scale: ',  min_scale)
@@ -388,9 +390,10 @@ def train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH):
 		start = time.time()
 		gc.collect()
 		sys.stdout.flush()
+		if epoch % 5 == 0:
+			optf_net.eval()
+			validate(optf_net, valid_loader, validbatch_sz)
 		end = time.time()
-	optf_net.eval()
-	validate(optf_net, valid_loader, validbatch_sz)
 		
 
 

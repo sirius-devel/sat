@@ -26,24 +26,18 @@ import geolocation as geo
 
 USE_CUDA = torch.cuda.is_available()
 # USAGE:
-# python3 valid.py FOLDER_NAME DATAPATH MODEL_PATH DATASET_PATH
+# python3 valid.py MODEL_PATH DATASET_PATH
 
 # TRAIN:
-# python3 valid.py woodbridge /home/user/sat/sat_data/ /home/user/sat/models/trained_model_output.pth /home/user/sat
+# python3 valid.py woodbridge /home/user/sat/models/epoch50_resnet.pth /home/user/sat
 
 ###--- TRAINING PARAMETERS
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument("FOLDER_NAME")
-	parser.add_argument("DATAPATH")
 	parser.add_argument("MODEL_PATH")
 	parser.add_argument("DATASET_PATH")
 	args = parser.parse_args()
-
-	FOLDER_NAME = args.FOLDER_NAME
-	FOLDER = FOLDER_NAME + '/'
-	DATAPATH = args.DATAPATH
 	MODEL_PATH = args.MODEL_PATH
 	DATASET_PATH = args.DATASET_PATH
 	validbatch_sz = 1
@@ -51,18 +45,18 @@ if __name__ == "__main__":
 	valid_loader = geo.DataLoader(valid_dataset, batch_size = validbatch_sz, shuffle = True, pin_memory=True)
 
 	if USE_CUDA:
-		optf_net = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/sat/models/epoch50_resnet.pth")).cuda()
-		optf_net150 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/sat/models/epoch50_resnet_150.pth")).cuda()
-		optf_net200 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/models/epoch50_resnet_200.pth")).cuda()
+		optf_net = geo.optf.OptFlow(geo.optf.PretrainedNet(MODEL_PATH)).cuda()
+		#optf_net150 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/sat/models/epoch50_resnet_150.pth")).cuda()
+		#optf_net200 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/models/epoch50_resnet_200.pth")).cuda()
 	else:
-		optf_net = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/models/epoch50_resnet.pth.pth"))
-		optf_net150 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/models/epoch50_resnet_150.pth")).cuda()
-		optf_net200 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/models/epoch50_resnet_200.pth")).cuda()
+		optf_net = geo.optf.OptFlow(geo.optf.PretrainedNet(MODEL_PATH))
+		#optf_net150 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/models/epoch50_resnet_150.pth")).cuda()
+		#optf_net200 = geo.optf.OptFlow(geo.optf.PretrainedNet("/home/user/models/epoch50_resnet_200.pth")).cuda()
 	optf_net.eval()
 	geo.validate(optf_net, valid_loader, 1)
 
-	optf_net150.eval()
-	geo.validate(optf_net150, valid_loader, 1)
+	#optf_net150.eval()
+	#geo.validate(optf_net150, valid_loader, 1)
 	
-	optf_net200.eval()
-	geo.validate(optf_net200, valid_loader, 1)		
+	#optf_net200.eval()
+	#geo.validate(optf_net200, valid_loader, 1)		
