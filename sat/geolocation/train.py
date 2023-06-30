@@ -44,7 +44,9 @@ if __name__ == "__main__":
 	DATASET_PATH = args.DATASET_PATH
 	IS_RESNET = args.IS_RESNET
 	if (IS_RESNET):
+		print("load resnet model")
 		geo.train_optflow_model(MODEL_PATH, DATASET_PATH, True)
 	else:
+		print("load vgg model")
 		geo.train_optflow_model(MODEL_PATH, DATASET_PATH, False)
-
+)

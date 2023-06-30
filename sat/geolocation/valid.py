@@ -26,10 +26,10 @@ import geolocation as geo
 
 USE_CUDA = torch.cuda.is_available()
 # USAGE:
-# python3 valid.py MODEL_PATH DATASET_PATH
+# python3 valid.py MODEL_PATH DATASET_PATH IS_RESNET
 
 # TRAIN:
-# python3 valid.py woodbridge /home/user/sat/models/epoch50_resnet.pth /home/user/sat
+# python3 valid.py /home/user/sat/models/epoch50_resnet.pth /home/user/sat
 
 ###--- TRAINING PARAMETERS
 if __name__ == "__main__":
