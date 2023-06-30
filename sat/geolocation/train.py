@@ -26,10 +26,10 @@ import geolocation as geo
 
 
 # USAGE:
-# python3 train.py FOLDER_NAME DATAPATH MODEL_PATH DATASET_PATH
+# python3 train.py FOLDER_NAME DATAPATH MODEL_PATH DATASET_PATH IS_RESNET
 
 # TRAIN:
-# python3 train.py woodbridge /home/user/sat/sat_data/ /home/user/sat/models/trained_model_output.pth /home/user/sat
+# python3 train.py woodbridge /home/user/sat/sat_data/ /home/user/sat/models/trained_model_output.pth /home/user/sat 1
 
 ###--- TRAINING PARAMETERS
 if __name__ == "__main__":
@@ -39,6 +39,7 @@ if __name__ == "__main__":
 	parser.add_argument("DATAPATH")
 	parser.add_argument("MODEL_PATH")
 	parser.add_argument("DATASET_PATH")
+	parser.add_argument("IS_RESNET")
 	args = parser.parse_args()
 
 	FOLDER_NAME = args.FOLDER_NAME
@@ -46,4 +47,9 @@ if __name__ == "__main__":
 	DATAPATH = args.DATAPATH
 	MODEL_PATH = args.MODEL_PATH
 	DATASET_PATH = args.DATASET_PATH
-	geo.train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH)
+	IS_RESNET = args.IS_RESNET
+	if (IS_RESNET):
+		geo.train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH, True)
+	else:
+		geo.train_optflow_model(DATAPATH, FOLDER, MODEL_PATH, DATASET_PATH, False)
+)

@@ -26,7 +26,7 @@ import geolocation as geo
 # python3 test.py DATASET_PATH MODEL1_PATH MODEL2_PATH --TEST_DATA_SAVE_PATH
 
 # TEST:
-# python3 test.py /home/user/sat/ /home/user/sat/models/epoch38_model.pth -t /home/user/sat/models/output1.txt
+# python3 test.py /home/user/sat/ /home/user/sat/models/epoch38_model.pth /home/user/sat/models/epoch38_2_model.pth -t /home/user/sat/models/output1.txt
 
 ###--- TESTING PARAMETERS
 if __name__ == "__main__":
