@@ -236,12 +236,12 @@ def test_optflow_model(DATASET_PATH, MODEL1_PATH, MODEL2_PATH, TEST_DATA_SAVE_PA
 		test_results[i, 1] = vgg_loss
 		test_results[i, 2] = ralg_loss
 		test_results[i, 3] = resnet50_loss
-		print('test: ', i, 
-			' trained loss: ', round(float(trained_loss), 2),
-			' vgg16 loss: ', round(float(vgg_loss), 2),
-			' ralg loss: ', round(float(ralg_loss), 2),
-			' resnet50 loss', round(float(resnet50_loss), 2))
-		sys.stdout.flush()		
+		#print('test: ', i, 
+		#	' trained loss: ', round(float(trained_loss), 2),
+		#	' vgg16 loss: ', round(float(vgg_loss), 2),
+		#	' ralg loss: ', round(float(ralg_loss), 2),
+		#	' resnet50 loss', round(float(resnet50_loss), 2))
+		#sys.stdout.flush()		
 		test_train_loss += float(trained_loss)
 		test_vgg_loss += float(vgg_loss)
 		test_ralg_loss += float(ralg_loss)
@@ -308,7 +308,7 @@ def validate(optf_net, valid_loader, validbatch_sz):
 		#print('batch validation loss: ', v_loss)
 		val_loss += v_loss
 	val_loss = float(val_loss/len(valid_loader))
-	print('Average validation loss on batch: ', float(val_loss))
+	print('Average validation loss: ', float(val_loss))
 	
 	
 def train_optflow_model(MODEL_PATH, DATASET_PATH, RESNET):
